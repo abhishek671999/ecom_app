@@ -1,0 +1,1 @@
+CREATE database ecom_app;
