@@ -17,6 +17,9 @@
 -- Allows fast slicing by day / month / quarter / year
 -- without expensive date functions on the fact table
 -- ============================================================
+create database if not exists ecom_app_olap;
+use ecom_app_olap;
+
 CREATE TABLE dim_date (
     date_id        INT           NOT NULL COMMENT 'Format: YYYYMMDD e.g. 20240101',
     full_date      DATE          NOT NULL,
@@ -39,17 +42,6 @@ CREATE TABLE dim_date (
   DEFAULT CHARSET=utf8mb4
   COMMENT='Date dimension — pre-populated, one row per calendar day';
 
--- Example seed rows (populate fully via ETL or script for 10+ years)
-
-INSERT INTO dim_date
-    (date_id, full_date, day, month, month_name, quarter, year,
-     day_of_week, day_name, is_weekend, is_holiday, week_of_year)
-VALUES
-    (20240101, '2024-01-01', 1,  1,  'January',  1, 2024, 1, 'Monday',   0, 1, 1),
-    (20240102, '2024-01-02', 2,  1,  'January',  1, 2024, 2, 'Tuesday',  0, 0, 1),
-    (20240103, '2024-01-03', 3,  1,  'January',  1, 2024, 3, 'Wednesday',0, 0, 1);
--- Continue for all days via a generation script
-
 
 -- ============================================================
 -- 2. dim_customer
@@ -58,11 +50,11 @@ VALUES
 -- valid_to = NULL means current active record
 -- ============================================================
 CREATE TABLE dim_customer (
-    dim_customer_id      INT           NOT NULL AUTO_INCREMENT,
-    source_customer_id   BIGINT        NOT NULL COMMENT 'FK to OLTP customers.id',
+    customer_id      INT           NOT NULL AUTO_INCREMENT,
     name                 VARCHAR(100)  NOT NULL,
     mobile_number        VARCHAR(15)   NOT NULL,
     email                VARCHAR(150)      NULL,
+    address              VARCHAR(2000) NOT NULL,
     city                 VARCHAR(100)  NOT NULL,
     locality             VARCHAR(100)  NOT NULL,
     pincode              VARCHAR(10)   NOT NULL,
@@ -75,11 +67,11 @@ CREATE TABLE dim_customer (
 
     created_at           DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
-    PRIMARY KEY (dim_customer_id),
-    INDEX idx_source_id  (source_customer_id),
+    PRIMARY KEY (customer_id),
+    INDEX idx_source_id  (customer_id),
     INDEX idx_is_current (is_current),
     INDEX idx_city       (city),
-    INDEX idx_valid      (source_customer_id, valid_from, valid_to)
+    INDEX idx_valid      (customer_id, valid_from, valid_to)
 ) ENGINE=InnoDB
   DEFAULT CHARSET=utf8mb4
   COMMENT='Customer dimension — SCD Type 2, full history preserved';
@@ -90,14 +82,14 @@ CREATE TABLE dim_customer (
 -- SCD Type 2 — preserves restaurant name / location history
 -- ============================================================
 CREATE TABLE dim_restaurant (
-    dim_restaurant_id      INT           NOT NULL AUTO_INCREMENT,
-    source_restaurant_id   BIGINT        NOT NULL COMMENT 'FK to OLTP restaurants.id',
+    restaurant_id      INT           NOT NULL AUTO_INCREMENT,
     name                   VARCHAR(150)  NOT NULL,
     mobile_number          VARCHAR(15)   NOT NULL,
-    city                   VARCHAR(100)  NOT NULL,
-    locality               VARCHAR(100)  NOT NULL,
-    pincode                VARCHAR(6)   NOT NULL,
-    status                 VARCHAR(20)   NOT NULL DEFAULT 'active',
+    address              VARCHAR(2000) NOT NULL,
+    city                 VARCHAR(100)  NOT NULL,
+    locality             VARCHAR(100)  NOT NULL,
+    pincode              VARCHAR(10)   NOT NULL,
+    status               VARCHAR(20)   NOT NULL DEFAULT 'active',
 
     -- SCD Type 2 validity window
     valid_from             DATETIME      NOT NULL,
@@ -106,11 +98,10 @@ CREATE TABLE dim_restaurant (
 
     created_at             DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
-    PRIMARY KEY (dim_restaurant_id),
-    INDEX idx_source_id  (source_restaurant_id),
+    PRIMARY KEY (restaurant_id),
     INDEX idx_is_current (is_current),
     INDEX idx_city       (city),
-
+	INDEX idx_pincode    (pincode),
     CONSTRAINT chk_pincode check ( (pincode LIKE '[0-9][0-9][0-9][0-9][0-9][0-9]'))
 
 ) ENGINE=InnoDB
@@ -119,56 +110,24 @@ CREATE TABLE dim_restaurant (
 
 
 -- ============================================================
--- 4. dim_item
--- SCD Type 2 — tracks price changes over time
--- If restaurant changes item price, old fact rows
--- still point to the correct historical price record
--- ============================================================
-CREATE TABLE dim_item (
-    dim_item_id            INT             NOT NULL AUTO_INCREMENT,
-    source_item_id         BIGINT          NOT NULL COMMENT 'FK to OLTP items.id',
-    source_restaurant_id   BIGINT          NOT NULL,
-    name                   VARCHAR(150)    NOT NULL,
-    price                  DECIMAL(10, 2)  NOT NULL,
-    restaurant_name        VARCHAR(150)    NOT NULL COMMENT 'Denormalized for fast queries',
-    is_available           TINYINT(1)      NOT NULL DEFAULT 1,
-
-    -- SCD Type 2 validity window
-    valid_from             DATETIME        NOT NULL,
-    valid_to               DATETIME            NULL COMMENT 'NULL = current active record',
-    is_current             TINYINT(1)      NOT NULL DEFAULT 1,
-
-    created_at             DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
-
-    PRIMARY KEY (dim_item_id),
-    INDEX idx_source_id    (source_item_id),
-    INDEX idx_restaurant   (source_restaurant_id),
-    INDEX idx_is_current   (is_current)
-) ENGINE=InnoDB
-  DEFAULT CHARSET=utf8mb4
-  COMMENT='Item/menu dimension — SCD Type 2, tracks price changes';
-
-
--- ============================================================
--- 5. dim_delivery_partner
+--  dim_delivery_partner
 -- SCD Type 1 — overwrite current record
 -- (history of delivery partner location not usually needed)
 -- ============================================================
 CREATE TABLE dim_delivery_partner (
-    dim_delivery_partner_id   INT           NOT NULL AUTO_INCREMENT,
-    source_partner_id         BIGINT        NOT NULL COMMENT 'FK to OLTP delivery_partners.id',
+    delivery_partner_id   INT           NOT NULL AUTO_INCREMENT,
     name                      VARCHAR(100)  NOT NULL,
     mobile_number             VARCHAR(15)   NOT NULL,
+    address                   VARCHAR(2000) NOT NULL,
     city                      VARCHAR(100)  NOT NULL,
-    pincode                   VARCHAR(6)   NOT NULL,
+    locality                  VARCHAR(100)  NOT NULL,
+    pincode                   VARCHAR(10)   NOT NULL,
     status                    VARCHAR(20)   NOT NULL DEFAULT 'available',
-
     created_at                DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at                DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP
                                             ON UPDATE CURRENT_TIMESTAMP,
 
-    PRIMARY KEY (dim_delivery_partner_id),
-    INDEX idx_source_id (source_partner_id),
+    PRIMARY KEY (delivery_partner_id),
     INDEX idx_city      (city),
 
     CONSTRAINT chk_del_partner_status CHECK (status in ('available', 'suspended'))
@@ -176,36 +135,11 @@ CREATE TABLE dim_delivery_partner (
   DEFAULT CHARSET=utf8mb4
   COMMENT='Delivery partner dimension — SCD Type 1 (overwrite)';
 
-
--- ============================================================
--- 6. dim_location
--- Standalone location dimension
--- Allows analysis of order patterns by area / pincode / city
--- independent of customer or restaurant
--- ============================================================
-CREATE TABLE dim_location (
-    dim_location_id   INT           NOT NULL AUTO_INCREMENT,
-    city              VARCHAR(100)  NOT NULL,
-    locality          VARCHAR(100)  NOT NULL,
-    pincode           VARCHAR(10)   NOT NULL,
-
-    PRIMARY KEY (dim_location_id),
-    UNIQUE idx_location (city, locality, pincode),
-    INDEX  idx_city     (city),
-    INDEX  idx_pincode  (pincode),
-
-    CONSTRAINT chk_loc_pincode check ( (pincode LIKE '[0-9][0-9][0-9][0-9][0-9][0-9]'))
-) ENGINE=InnoDB
-  DEFAULT CHARSET=utf8mb4
-  COMMENT='Location dimension — city / locality / pincode';
-
-
 -- ============================================================
 -- FACT TABLES
 -- Central tables — append only, never update
 -- Store foreign keys to dimensions + measurable values
 -- ============================================================
-
 
 -- ============================================================
 -- 7. fact_order_events  (Base Fact Table)
@@ -213,63 +147,50 @@ CREATE TABLE dim_location (
 -- Append only — ETL inserts here nightly from order_events
 -- Never update rows in this table
 -- ============================================================
-CREATE TABLE fact_order_events (
-    event_id                  BIGINT          NOT NULL AUTO_INCREMENT,
+CREATE TABLE fact_orders(
+    order_id                  BIGINT          NOT NULL COMMENT 'OLTP order_id',
 
-    -- Degenerate dimension (no separate dim table needed)
-    order_id                  BIGINT          NOT NULL COMMENT 'OLTP order_id — degenerate dimension',
-
-    -- Event metadata
-    create_timestamp          DATETIME        NOT NULL DEFAULT '0000-00-00',
-    confirmed_timestamp       DATETIME        NOT NULL DEFAULT '0000-00-00',
-    prepared_timestamp        DATETIME        NOT NULL DEFAULT '0000-00-00',
-    OFD_timestamp             DATETIME        NOT NULL DEFAULT '0000-00-00',
-    delivered_timestamp       DATETIME        NOT NULL DEFAULT '0000-00-00',
-    cancelled_timestamp       DATETIME        NOT NULL DEFAULT '0000-00-00',
+    -- order metadata
+    create_timestamp          DATETIME            NULL,
+    confirmed_timestamp       DATETIME            NULL,
+    prepared_timestamp        DATETIME            NULL,
+    OFD_timestamp             DATETIME            NULL,
+    delivered_timestamp       DATETIME            NULL,
+    cancelled_timestamp       DATETIME            NULL,
 
     -- Foreign keys to dimension tables
     dim_date_id               INT             NOT NULL,
     dim_customer_id           INT             NOT NULL,
     dim_restaurant_id         INT             NOT NULL,
-    dim_item_id               INT                 NULL COMMENT 'NULL for non-item events like payment',
     dim_delivery_partner_id   INT                 NULL COMMENT 'NULL until partner is assigned',
-    dim_location_id           INT             NOT NULL COMMENT 'Delivery location',
 
     -- Measures (what actually gets aggregated)
-    amount                    DECIMAL(10, 2)  NOT NULL DEFAULT 0.00,
-    quantity                  INT             NOT NULL DEFAULT 0,
+    order_amount                    DECIMAL(10, 2)  NOT NULL DEFAULT 0.00,
+    order_quantity                  INT             NOT NULL DEFAULT 0,
+    order_item_collection			JSON			NOT NULL DEFAULT (JSON_OBJECT()),
+    
 
     -- ETL audit columns
     etl_batch_id              VARCHAR(50)         NULL COMMENT 'ETL run identifier for traceability',
     etl_loaded_at             DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
-    PRIMARY KEY (event_id),
-    INDEX idx_order_id      (order_id),
+    PRIMARY KEY (order_id),
     INDEX idx_date          (dim_date_id),
     INDEX idx_customer      (dim_customer_id),
     INDEX idx_restaurant    (dim_restaurant_id),
-    INDEX idx_item          (dim_item_id),
     INDEX idx_partner       (dim_delivery_partner_id),
-    INDEX idx_location      (dim_location_id),
-    INDEX idx_event_type    (event_type),
-    INDEX idx_event_ts      (event_timestamp),
 
     CONSTRAINT fk_foe_date
         FOREIGN KEY (dim_date_id)             REFERENCES dim_date (date_id),
     CONSTRAINT fk_foe_customer
-        FOREIGN KEY (dim_customer_id)         REFERENCES dim_customer (dim_customer_id),
+        FOREIGN KEY (dim_customer_id)         REFERENCES dim_customer (customer_id),
     CONSTRAINT fk_foe_restaurant
-        FOREIGN KEY (dim_restaurant_id)       REFERENCES dim_restaurant (dim_restaurant_id),
-    CONSTRAINT fk_foe_item
-        FOREIGN KEY (dim_item_id)             REFERENCES dim_item (dim_item_id),
+        FOREIGN KEY (dim_restaurant_id)       REFERENCES dim_restaurant (restaurant_id),
     CONSTRAINT fk_foe_delivery_partner
-        FOREIGN KEY (dim_delivery_partner_id) REFERENCES dim_delivery_partner (dim_delivery_partner_id),
-    CONSTRAINT fk_foe_location
-        FOREIGN KEY (dim_location_id)         REFERENCES dim_location (dim_location_id)
+        FOREIGN KEY (dim_delivery_partner_id) REFERENCES dim_delivery_partner (delivery_partner_id)
 ) ENGINE=InnoDB
   DEFAULT CHARSET=utf8mb4
   COMMENT='Base fact table — one row per order event, append only';
-
 
 -- ============================================================
 -- AGGREGATE FACT TABLES (Sub Fact Tables)

@@ -1,3 +1,5 @@
 .dbeaver
 .DS_Store
 .project
+.ecom_app
+*.pyc
