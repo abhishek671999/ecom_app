@@ -3,3 +3,4 @@
 .project
 .ecom_app
 *.pyc
+app_host_services/SQL/mysql-local-data
