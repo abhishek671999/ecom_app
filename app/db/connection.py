@@ -19,6 +19,7 @@ def get_connection() -> MySQLdb.Connection:
         db=settings.db_name,
         charset="utf8mb4",
         autocommit=False,
+        local_infile=1,
     )
 
 

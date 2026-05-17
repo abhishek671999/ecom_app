@@ -3,7 +3,7 @@
 -- ============================================================
 CREATE database IF NOT EXISTS ecom_oltp_db;
 
-use ecom_oltp_db
+use ecom_oltp_db;
 
 -- ============================================================
 -- 1. address
@@ -15,7 +15,7 @@ CREATE TABLE address (
     street       VARCHAR(100)  NOT NULL,
     locality     VARCHAR(100)  NOT NULL,
     city         VARCHAR(100)  NOT NULL,
-    pincode      VARCHAR(6)   NOT NULL,
+    pincode      VARCHAR(6)    NOT NULL,
     created_at   DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at   DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP
                                ON UPDATE CURRENT_TIMESTAMP,
@@ -25,7 +25,7 @@ CREATE TABLE address (
     INDEX idx_pincode (pincode),
 
     CONSTRAINT chk_type CHECK ( address_type IN ('home', 'work', 'restaurant', 'other')),
-    CONSTRAINT chk_pincode check ( (pincode LIKE '[0-9][0-9][0-9][0-9][0-9][0-9]'))
+    CONSTRAINT chk_pincode CHECK (pincode REGEXP '^[0-9]{6}$'))
 
 ) ENGINE=InnoDB
   DEFAULT CHARSET=utf8mb4
@@ -248,15 +248,6 @@ CREATE TABLE etl_watermark (
 ) ENGINE=InnoDB
   DEFAULT CHARSET=utf8mb4
   COMMENT='ETL watermark — tracks last successful extraction per table';
-
--- Seed initial watermark rows
-INSERT INTO etl_watermark (table_name, last_run) VALUES
-    ('order_events',  '2000-01-01 00:00:00'),
-    ('customers',     '2000-01-01 00:00:00'),
-    ('restaurants',   '2000-01-01 00:00:00'),
-    ('items',         '2000-01-01 00:00:00'),
-    ('orders',        '2000-01-01 00:00:00');
-
 
 -- ============================================================
 -- 10. order_events_archive
