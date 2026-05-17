@@ -2,6 +2,7 @@ version: '3.8'
 services:
   mysqldb:
     image: mysql:8.0
+    container_name: mysql_container
     ports:
       - 3306:3306
     environment:
@@ -9,3 +10,11 @@ services:
     volumes:
       - ./mysql-local-data:/var/lib/mysql
     command: --default-authentication-plugin=mysql_native_password --local-infile=1
+    networks:
+      - ecom_network
+
+
+networks:
+  ecom_network:
+    external: true
+    name: ecom_shared_network

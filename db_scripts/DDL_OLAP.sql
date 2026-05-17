@@ -17,8 +17,8 @@
 -- Allows fast slicing by day / month / quarter / year
 -- without expensive date functions on the fact table
 -- ============================================================
-create database if not exists ecom_app_olap;
-use ecom_app_olap;
+create database if not exists ecom_olap_db;
+use ecom_olap_db;
 
 CREATE TABLE dim_date (
     date_id        INT           NOT NULL COMMENT 'Format: YYYYMMDD e.g. 20240101',
@@ -229,9 +229,7 @@ CREATE TABLE fact_orders_daily_agg (
     CONSTRAINT fk_daily_date
         FOREIGN KEY (dim_date_id)       REFERENCES dim_date (date_id),
     CONSTRAINT fk_daily_restaurant
-        FOREIGN KEY (dim_restaurant_id) REFERENCES dim_restaurant (dim_restaurant_id),
-    CONSTRAINT fk_daily_location
-        FOREIGN KEY (dim_location_id)   REFERENCES dim_location (dim_location_id)
+        FOREIGN KEY (dim_restaurant_id) REFERENCES dim_restaurant (restaurant_id)
 ) ENGINE=InnoDB
   DEFAULT CHARSET=utf8mb4
   COMMENT='Daily aggregate fact — revenue and orders per restaurant per day';
@@ -245,7 +243,6 @@ CREATE TABLE fact_orders_monthly_agg (
     year                 SMALLINT        NOT NULL,
     month                TINYINT         NOT NULL,
     dim_restaurant_id    INT             NOT NULL,
-    dim_location_id      INT             NOT NULL,
 
     -- Pre-aggregated measures
     total_orders         INT             NOT NULL DEFAULT 0,
@@ -258,14 +255,13 @@ CREATE TABLE fact_orders_monthly_agg (
     etl_loaded_at        DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP
                                          ON UPDATE CURRENT_TIMESTAMP,
 
-    PRIMARY KEY (year, month, dim_restaurant_id, dim_location_id),
+    PRIMARY KEY (year, month, dim_restaurant_id),
+    
     INDEX idx_year_month (year, month),
     INDEX idx_restaurant (dim_restaurant_id),
 
     CONSTRAINT fk_monthly_restaurant
-        FOREIGN KEY (dim_restaurant_id) REFERENCES dim_restaurant (dim_restaurant_id),
-    CONSTRAINT fk_monthly_location
-        FOREIGN KEY (dim_location_id)   REFERENCES dim_location (dim_location_id)
+        FOREIGN KEY (dim_restaurant_id) REFERENCES dim_restaurant (restaurant_id)
 ) ENGINE=InnoDB
   DEFAULT CHARSET=utf8mb4
   COMMENT='Monthly aggregate fact — revenue trends per restaurant';
