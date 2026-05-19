@@ -1,1 +1,2 @@
 - fill all the dimensional tables first using spark
+- under how cluster management is going to work with this setup

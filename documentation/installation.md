@@ -6,6 +6,10 @@ pip install mysqlclient
 
 python -m uvicorn main:app --reload
 
+driver -> mac (python3.10)
+master, worker -> docker (python3.10)
+Wouldn't work if driver python and master/worker python doesn't match
+
 ping host.docker.internal - if it doesn't work follow below steps
 ipconfig getifaddr en0 -> copy this private IP address
 sudo sh -c 'echo "192.168.0.113 host.docker.internal" >> /etc/hosts' -> append it to /etc/hosts

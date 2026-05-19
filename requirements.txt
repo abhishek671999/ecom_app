@@ -4,4 +4,5 @@ mysqlclient
 pydantic
 pydantic-settings
 python-dotenv
-pyspark 
+pyspark
+mysql
