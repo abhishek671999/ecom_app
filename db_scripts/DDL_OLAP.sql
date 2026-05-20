@@ -50,7 +50,7 @@ CREATE TABLE dim_date (
 -- valid_to = NULL means current active record
 -- ============================================================
 CREATE TABLE dim_customer (
-    customer_id      INT           NOT NULL AUTO_INCREMENT,
+    customer_id          INT           NOT NULL ,
     name                 VARCHAR(100)  NOT NULL,
     mobile_number        VARCHAR(15)   NOT NULL,
     email                VARCHAR(150)      NULL,
@@ -67,7 +67,6 @@ CREATE TABLE dim_customer (
 
     created_at           DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
-    PRIMARY KEY (customer_id),
     INDEX idx_source_id  (customer_id),
     INDEX idx_is_current (is_current),
     INDEX idx_city       (city),

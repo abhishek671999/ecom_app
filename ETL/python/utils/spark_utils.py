@@ -36,10 +36,9 @@ def write_table(db_name: str, table_name: str, dataframe: pyspark.sql.dataframe.
         print('Log: ', str(e))
 
 
-def overwrite_table(db_name: str, table_name: str,
-                    dataframe: pyspark.sql.dataframe.DataFrame):
+def overwrite_table(db_name: str, table_name: str, dataframe: pyspark.sql.dataframe.DataFrame):
     try:
-        # Step 1: truncate via direct MySQL connection
+        # Step 1: Clear the table using DELETE (allows constraint bypass)
         conn = mysql.connector.connect(
             host="host.docker.internal",
             port=3306,
@@ -48,21 +47,23 @@ def overwrite_table(db_name: str, table_name: str,
             password="password"
         )
         cursor = conn.cursor()
-        # IMPORTANT: must be in same session as truncate
-        cursor.execute("SET FOREIGN_KEY_CHECKS = 0")
-        cursor.execute(f"TRUNCATE TABLE {table_name}")
-        cursor.execute("SET FOREIGN_KEY_CHECKS = 1")
+        cursor.execute("SET FOREIGN_KEY_CHECKS = 0;")
+        cursor.execute(f"DELETE FROM {table_name};")  # Safe to bypass with FK checks = 0
         conn.commit()
         cursor.close()
         conn.close()
-        print('truncate successful')
-        # Step 2: append fresh data into the now-empty table
+        print('Table cleared successfully')
+
+        # Step 2: Append fresh data, forcing Spark's JDBC session to also ignore FKs
         dataframe.write.format("jdbc") \
             .options(**JDBC_CONFIG) \
             .option("url", f"jdbc:mysql://host.docker.internal:3306/{db_name}") \
             .option("dbtable", table_name) \
-            .mode("append")\
+            .option("sessionInitStatement", "SET FOREIGN_KEY_CHECKS = 0;") \
+            .mode("append") \
             .save()
+            
+        print('Data write successful')
 
     except Exception as e:
         print('Log: ', str(e))
