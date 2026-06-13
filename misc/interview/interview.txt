@@ -1,0 +1,52 @@
+1) Whats the major challenge you have faced and what's the solution you came up with in Spark?
+- Use of broadcast join while joining relatively smaller table with larger table
+- cache repeatative dataframe
+- use right partition size
+
+Hi Aparna I came across DE opening at TEKsystem.I noticed my skillsets match with JD. I've 5 yrs of exp.I'm active learner.I'd love to connect to discuss if my background aligns with your team's needs
+
+Hi Sayonika
+I came across an DE opening at AE and actively looking for job change. I have got 5 yrs of exp and I'm positive that I can crack interview with my exp. Would you be open to referring me?
+
+
+- Working for the client HSBC on a POD that deals ESG (Environmental Social Governance) data for the entities related to HSBC.
+- It involves understanding business requirement and implementing them for Quarterly and Annual reports, and documenting evidences.
+- Writing Data Quality checks and Validating data from multiple vendors like Bloomberg, Refinitv, S&P
+- Have delivered data with more than 80% improvements in data accuracy compared to all the deliverables in 2024
+- Extensively worked on Vendor outlier analysis to build a view that highlights outliers in the vendor data for emissions and financial data
+- Created multiple views by optimized processing data of size 10TB in under 10 minutes on a small cluster (5 CPU and 50 G mem)
+-Technology stack: Jupyterhub, HDFS, GCS, Spark, Pandas, SQL
+
+
+
+- Involved in bootstrapping web scrapping project to scrape the Govt bonds and bills data for 12 countries and store in MongoDB
+- Used GitHub actions to test scraped data.
+- Worked on creating CI-CD to containerize scrapers and create releases.
+- Maintained data-platform pipelines on Snowflake and DBT
+
+
+
+Following are the projects I got chance to work
+1.Device data service
+- Involved building ML models on company's proprietary printer dataset by extracting actionable information
+- Enhanced model accuracy by employing various optimization techniques.
+
+2.HP Sales and Management
+- Engaged in data sourcing, constructing pipelines, and developing dashboards for sell-out sales prediction utilizing Time-series analysis techniques
+- Implemented pipeline alerts and notifications through web hooks, enabling seamless integration with teams for enhanced monitoring capabilities.
+
+3. HP SARA
+- Played an integral role in understanding business challenges, strategies, and underlying logic to derive and calculate diverse sales performance metrics.
+- Designed a flexible pipeline for effortless migration from DSS to any cloud platform with minimal code modifications, ensuring smooth transitions and maximizing efficiency.
+
+4.MLOPS(POC)
+- Developed end-to-end machine learning pipelines on Azure cloud, leveraging MLOPS principles.
+- Implemented diverse techniques for automated triggering of pipelines to facilitate seamless building, validation, and deployment of models.
+- Utilized Azure DevOps to orchestrate the entire workflow, encompassing model building to Flask deployment, by creating well-defined steps and processes.
+- Used Azure function functions as blob triggers
+
+5.Plagiarism checker
+- An application to fetch, parse and compute similarity score between all the mails in a Distribution list of outlook
+- This app is developed as an initiative for an internal program at the company.
+- It's been helping Human resource team save ~3 hours every week by eliminating manual work
+- Technology stack: Multi processing, Outlook's library, Tkinter, Pandas

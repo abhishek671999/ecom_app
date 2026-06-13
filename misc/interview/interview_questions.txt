@@ -1,0 +1,55 @@
+Write a query to find employees who have the same salary.
+
+with cte as (
+    select *,
+    count(*) over(partition by salary) as count_salary
+    from employee_tbl
+)
+select * from cte where count_salary > 1
+
+
+select salary, concat_ws(' | ', employee_num) as emp_num
+from employee_tbl
+group by salary
+having count(*) > 1
+
+You have two tables:
+Orders(order_id, customer_id, amount)
+Customers(customer_id, name)
+Write a query to find customers who never placed an order.
+
+select cust.customer_id, cust.name
+from Customers cust
+left join Orders ord
+on cust.customer_id == ord.customer_id
+where ord.customer_id is Null
+
+count how many times each word appears in a string:
+text = "this is a test this is only a test"
+1) split -> list
+2) create empty dictionary
+3) iterate list and update key
+
+text_lst = text.split(' ')
+count_dict = {}
+for word in text_lst:
+    if count_dict.get(word):
+        count_dict[word] += 1
+    else:
+        count_dict[word] = 1
+
+print(count_dict)
+
+-------------------------------------------------------------
+You are provided with a CSV file containing 9 columns without headers.
+Your task is to:
+Extract only the 2nd and 5th columns from the file.
+Apply the following validations:
+ 
+2nd Column: Must be numeric and contain exactly 4 digits.
+5th Column: Must be alphanumeric and have a length of exactly 5 characters.
+ 
+Output only the rows that satisfy both validation conditions.
+
+
+------------------------------------------------------------

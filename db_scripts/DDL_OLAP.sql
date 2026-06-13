@@ -4,7 +4,7 @@
 -- Database: MySQL 8.0+ / Redshift / BigQuery / Snowflake
 -- ============================================================
 
--- ============================================================
+-- =======================================================s=====
 -- DIMENSION TABLES
 -- Slowly Changing Dimension Type 2 (SCD2) where noted
 -- Dimension tables surround the central fact table
@@ -32,12 +32,7 @@ CREATE TABLE dim_date (
     day_name       VARCHAR(10)   NOT NULL COMMENT 'Monday ... Sunday',
     is_weekend     TINYINT(1)    NOT NULL DEFAULT 0,
     is_holiday     TINYINT(1)    NOT NULL DEFAULT 0,
-    week_of_year   TINYINT       NOT NULL,
-
-    PRIMARY KEY (date_id),
-    INDEX idx_full_date  (full_date),
-    INDEX idx_year_month (year, month),
-    INDEX idx_quarter    (year, quarter)
+    week_of_year   TINYINT       NOT NULL
 ) ENGINE=InnoDB
   DEFAULT CHARSET=utf8mb4
   COMMENT='Date dimension — pre-populated, one row per calendar day';
@@ -50,6 +45,7 @@ CREATE TABLE dim_date (
 -- valid_to = NULL means current active record
 -- ============================================================
 CREATE TABLE dim_customer (
+    surrogate_key        INT           NOT NULL,
     customer_id          INT           NOT NULL ,
     name                 VARCHAR(100)  NOT NULL,
     mobile_number        VARCHAR(15)   NOT NULL,
@@ -63,14 +59,9 @@ CREATE TABLE dim_customer (
     -- SCD Type 2 validity window
     valid_from           DATETIME      NOT NULL,
     valid_to             DATETIME          NULL COMMENT 'NULL = current active record',
-    is_current           TINYINT(1)    NOT NULL DEFAULT 1,
+    is_current           TINYINT(1)    NOT NULL,
 
-    created_at           DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
-
-    INDEX idx_source_id  (customer_id),
-    INDEX idx_is_current (is_current),
-    INDEX idx_city       (city),
-    INDEX idx_valid      (customer_id, valid_from, valid_to)
+    created_at           DATETIME      NOT NULL
 ) ENGINE=InnoDB
   DEFAULT CHARSET=utf8mb4
   COMMENT='Customer dimension — SCD Type 2, full history preserved';
@@ -81,27 +72,21 @@ CREATE TABLE dim_customer (
 -- SCD Type 2 — preserves restaurant name / location history
 -- ============================================================
 CREATE TABLE dim_restaurant (
-    restaurant_id      INT           NOT NULL AUTO_INCREMENT,
+    restaurant_id      INT           NOT NULL,
     name                   VARCHAR(150)  NOT NULL,
     mobile_number          VARCHAR(15)   NOT NULL,
     address              VARCHAR(2000) NOT NULL,
     city                 VARCHAR(100)  NOT NULL,
     locality             VARCHAR(100)  NOT NULL,
     pincode              VARCHAR(10)   NOT NULL,
-    status               VARCHAR(20)   NOT NULL DEFAULT 'active',
+    status               VARCHAR(20)   NOT NULL,
 
     -- SCD Type 2 validity window
     valid_from             DATETIME      NOT NULL,
     valid_to               DATETIME          NULL COMMENT 'NULL = current active record',
-    is_current             TINYINT(1)    NOT NULL DEFAULT 1,
+    is_current             TINYINT(1)    NOT NULL,
 
-    created_at             DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
-
-    PRIMARY KEY (restaurant_id),
-    INDEX idx_is_current (is_current),
-    INDEX idx_city       (city),
-	INDEX idx_pincode    (pincode),
-    CONSTRAINT chk_pincode check ( (pincode LIKE '[0-9][0-9][0-9][0-9][0-9][0-9]'))
+    created_at             DATETIME      NOT NULL
 
 ) ENGINE=InnoDB
   DEFAULT CHARSET=utf8mb4
@@ -114,22 +99,16 @@ CREATE TABLE dim_restaurant (
 -- (history of delivery partner location not usually needed)
 -- ============================================================
 CREATE TABLE dim_delivery_partner (
-    delivery_partner_id   INT           NOT NULL AUTO_INCREMENT,
+    delivery_partner_id   INT           NOT NULL,
     name                      VARCHAR(100)  NOT NULL,
     mobile_number             VARCHAR(15)   NOT NULL,
     address                   VARCHAR(2000) NOT NULL,
     city                      VARCHAR(100)  NOT NULL,
     locality                  VARCHAR(100)  NOT NULL,
     pincode                   VARCHAR(10)   NOT NULL,
-    status                    VARCHAR(20)   NOT NULL DEFAULT 'available',
-    created_at                DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at                DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP
-                                            ON UPDATE CURRENT_TIMESTAMP,
-
-    PRIMARY KEY (delivery_partner_id),
-    INDEX idx_city      (city),
-
-    CONSTRAINT chk_del_partner_status CHECK (status in ('available', 'suspended'))
+    status                    VARCHAR(20)   NOT NULL,
+    created_at                DATETIME      NOT NULL,
+    updated_at                DATETIME      NOT NULL
 ) ENGINE=InnoDB
   DEFAULT CHARSET=utf8mb4
   COMMENT='Delivery partner dimension — SCD Type 1 (overwrite)';
@@ -164,29 +143,14 @@ CREATE TABLE fact_orders(
     dim_delivery_partner_id   INT                 NULL COMMENT 'NULL until partner is assigned',
 
     -- Measures (what actually gets aggregated)
-    order_amount                    DECIMAL(10, 2)  NOT NULL DEFAULT 0.00,
-    order_quantity                  INT             NOT NULL DEFAULT 0,
-    order_item_collection			JSON			NOT NULL DEFAULT (JSON_OBJECT()),
+    order_amount                    DECIMAL(10, 2)  NOT NULL,
+    order_quantity                  INT             NOT NULL,
+    order_item_collection			JSON			NOT NULL,
     
 
     -- ETL audit columns
     etl_batch_id              VARCHAR(50)         NULL COMMENT 'ETL run identifier for traceability',
-    etl_loaded_at             DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
-
-    PRIMARY KEY (order_id),
-    INDEX idx_date          (dim_date_id),
-    INDEX idx_customer      (dim_customer_id),
-    INDEX idx_restaurant    (dim_restaurant_id),
-    INDEX idx_partner       (dim_delivery_partner_id),
-
-    CONSTRAINT fk_foe_date
-        FOREIGN KEY (dim_date_id)             REFERENCES dim_date (date_id),
-    CONSTRAINT fk_foe_customer
-        FOREIGN KEY (dim_customer_id)         REFERENCES dim_customer (customer_id),
-    CONSTRAINT fk_foe_restaurant
-        FOREIGN KEY (dim_restaurant_id)       REFERENCES dim_restaurant (restaurant_id),
-    CONSTRAINT fk_foe_delivery_partner
-        FOREIGN KEY (dim_delivery_partner_id) REFERENCES dim_delivery_partner (delivery_partner_id)
+    etl_loaded_at             DATETIME        NOT NULL
 ) ENGINE=InnoDB
   DEFAULT CHARSET=utf8mb4
   COMMENT='Base fact table — one row per order event, append only';
@@ -210,25 +174,14 @@ CREATE TABLE fact_orders_daily_agg (
     dim_location_id      INT             NOT NULL,
 
     -- Pre-aggregated measures
-    total_orders         INT             NOT NULL DEFAULT 0,
-    total_revenue        DECIMAL(15, 2)  NOT NULL DEFAULT 0.00,
-    avg_order_value      DECIMAL(10, 2)  NOT NULL DEFAULT 0.00,
-    total_items_sold     INT             NOT NULL DEFAULT 0,
-    unique_customers     INT             NOT NULL DEFAULT 0,
+    total_orders         INT             NOT NULL,
+    total_revenue        DECIMAL(15, 2)  NOT NULL,
+    avg_order_value      DECIMAL(10, 2)  NOT NULL,
+    total_items_sold     INT             NOT NULL,
+    unique_customers     INT             NOT NULL,
 
     -- ETL audit
-    etl_loaded_at        DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP
-                                         ON UPDATE CURRENT_TIMESTAMP,
-
-    PRIMARY KEY (dim_date_id, dim_restaurant_id, dim_location_id),
-    INDEX idx_date       (dim_date_id),
-    INDEX idx_restaurant (dim_restaurant_id),
-    INDEX idx_location   (dim_location_id),
-
-    CONSTRAINT fk_daily_date
-        FOREIGN KEY (dim_date_id)       REFERENCES dim_date (date_id),
-    CONSTRAINT fk_daily_restaurant
-        FOREIGN KEY (dim_restaurant_id) REFERENCES dim_restaurant (restaurant_id)
+    etl_loaded_at        DATETIME        NOT NULL
 ) ENGINE=InnoDB
   DEFAULT CHARSET=utf8mb4
   COMMENT='Daily aggregate fact — revenue and orders per restaurant per day';
@@ -244,23 +197,14 @@ CREATE TABLE fact_orders_monthly_agg (
     dim_restaurant_id    INT             NOT NULL,
 
     -- Pre-aggregated measures
-    total_orders         INT             NOT NULL DEFAULT 0,
-    total_revenue        DECIMAL(15, 2)  NOT NULL DEFAULT 0.00,
-    avg_order_value      DECIMAL(10, 2)  NOT NULL DEFAULT 0.00,
-    total_items_sold     INT             NOT NULL DEFAULT 0,
-    unique_customers     INT             NOT NULL DEFAULT 0,
+    total_orders         INT             NOT NULL,
+    total_revenue        DECIMAL(15, 2)  NOT NULL,
+    avg_order_value      DECIMAL(10, 2)  NOT NULL,
+    total_items_sold     INT             NOT NULL,
+    unique_customers     INT             NOT NULL,
 
     -- ETL audit
-    etl_loaded_at        DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP
-                                         ON UPDATE CURRENT_TIMESTAMP,
-
-    PRIMARY KEY (year, month, dim_restaurant_id),
-    
-    INDEX idx_year_month (year, month),
-    INDEX idx_restaurant (dim_restaurant_id),
-
-    CONSTRAINT fk_monthly_restaurant
-        FOREIGN KEY (dim_restaurant_id) REFERENCES dim_restaurant (restaurant_id)
+    etl_loaded_at        DATETIME        NOT NULL
 ) ENGINE=InnoDB
   DEFAULT CHARSET=utf8mb4
   COMMENT='Monthly aggregate fact — revenue trends per restaurant';
@@ -276,20 +220,15 @@ CREATE TABLE fact_orders_monthly_agg (
 -- Audit log for every ETL run — helps debug and replay
 -- ============================================================
 CREATE TABLE olap_etl_log (
-    id               INT           NOT NULL AUTO_INCREMENT,
+    id               INT           NOT NULL,
     batch_id         VARCHAR(50)   NOT NULL COMMENT 'Unique ID per ETL run',
     table_name       VARCHAR(100)  NOT NULL,
-    rows_extracted   INT           NOT NULL DEFAULT 0,
-    rows_loaded      INT           NOT NULL DEFAULT 0,
+    rows_extracted   INT           NOT NULL,
+    rows_loaded      INT           NOT NULL,
     status           VARCHAR(20)   NOT NULL COMMENT 'running | success | failed',
     error_message    TEXT              NULL,
     started_at       DATETIME      NOT NULL,
-    completed_at     DATETIME          NULL,
-
-    PRIMARY KEY (id),
-    INDEX idx_batch_id   (batch_id),
-    INDEX idx_status     (status),
-    INDEX idx_started_at (started_at)
+    completed_at     DATETIME          NULL
 ) ENGINE=InnoDB
   DEFAULT CHARSET=utf8mb4
   COMMENT='ETL audit log — one row per table per ETL run';

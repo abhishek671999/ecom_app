@@ -5,3 +5,4 @@
 .ecom_app_py310
 *.pyc
 app_host_services/SQL/mysql-local-data
+data

@@ -1,2 +1,6 @@
 - fill all the dimensional tables first using spark
-- under how cluster management is going to work with this setup
+- understand how cluster management is going to work with this setup
+
+
+implement upsert using mysql with no constraints
+implement delta table to handle those cases
